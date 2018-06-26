@@ -150,13 +150,14 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
             // important to read from headers here coz later client will change and there will be only msgs on pipe
             $headers = fread($newClient, self::HEADER_BYTES_READ);
             if (empty($this->handler->pathParams[0]) === false) {
+                echo"<pre>"; var_dump($headers);
                 $this->setPathParams($headers);
             }
             $this->clients[] = $newClient;
             $this->stepRecursion = true; // set on new client coz of remainder % is always 0
             // trigger OPEN event
-            $this->handler->onOpen($this->connImpl->getConnection($newClient));
             $this->handshake($newClient, $headers);
+            $this->handler->onOpen($this->connImpl->getConnection($newClient));
         }
         //delete the server socket from the read sockets
         unset($readSocks[array_search($server, $readSocks, false)]);
