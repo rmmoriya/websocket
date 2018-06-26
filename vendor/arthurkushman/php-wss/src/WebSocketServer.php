@@ -150,7 +150,6 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
             // important to read from headers here coz later client will change and there will be only msgs on pipe
             $headers = fread($newClient, self::HEADER_BYTES_READ);
             if (empty($this->handler->pathParams[0]) === false) {
-                echo"<pre>"; var_dump($headers);
                 $this->setPathParams($headers);
             }
             $this->clients[] = $newClient;
