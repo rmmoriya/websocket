@@ -6,14 +6,6 @@ use WSSC\Exceptions\WebSocketException;
 
 class ServerHandler extends WebSocket
 {
-
-    /*
-     *  if You need to parse URI context like /messanger/chat/JKN324jn4213
-     *  You can do so by placing URI parts into an array - $pathParams, when Socket will receive a connection 
-     *  this variable will be appropriately set to key => value pairs, ex.: ':context' => 'chat'
-     *  Otherwise leave $pathParams as an empty array
-     */
-
     public $pathParams = [':entity', ':context', ':token'];
     private $clients = [];
 
