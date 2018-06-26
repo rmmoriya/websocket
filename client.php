@@ -3,6 +3,6 @@ require __DIR__ . '/vendor/autoload.php';
 
 use WSSC\WebSocketClient;
 
-$client = new WebSocketClient('wss://websocket.augusto.ai/notifications/messanger/yourtoken123?room=2');
-$client->send('{"user_id" : 123}');
+$client = new WebSocketClient('wss://websocket.augusto.ai/notifications/messanger/yourtoken123');
+$client->send('{"room" : 5}');
 echo $client->receive();
