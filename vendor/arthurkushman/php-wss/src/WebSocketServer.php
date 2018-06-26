@@ -14,29 +14,28 @@ use WSSC\Exceptions\WebSocketException;
 class WebSocketServer implements WebSocketServerContract, CommonsContract
 {
 
-    private $clients = [];
+    const MAX_BYTES_READ = 8192;
     // set any template You need ex.: GET /subscription/messenger/token
+    const HEADER_BYTES_READ = 1024;
+    const STREAM_SELECT_TIMEOUT = 3600;
+    const NON_BLOCK = 0;
+    const MAX_CLIENTS_REMAINDER_FORK = 1000;
+    const PROC_TITLE = 'php-wss';
+    private $clients = [];
     private $pathParams = [];
     private $config;
     private $handshakes = [];
+    // for the very 1st time must be true
     private $headersUpgrade = [];
     private $totalClients = 0;
     private $maxClients = 1;
-    private $handler;
-    private $connImpl;
-    private $cureentConn;
-    // for the very 1st time must be true
-    private $stepRecursion = true;
-
-    const MAX_BYTES_READ = 8192;
-    const HEADER_BYTES_READ = 1024;
     // must be the time for interaction between each client
-    const STREAM_SELECT_TIMEOUT = 3600;
+    private $handler;
     // stream non-blocking 
-    const NON_BLOCK = 0;
+    private $connImpl;
     // max clients to fork another process
-    const MAX_CLIENTS_REMAINDER_FORK = 1000;
-    const PROC_TITLE = 'php-wss';
+    private $cureentConn;
+    private $stepRecursion = true;
 
     /**
      * WebSocketServer constructor.
@@ -49,8 +48,7 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
             'host' => self::DEFAULT_HOST,
             'port' => self::DEFAULT_PORT,
         ]
-    )
-    {
+    ) {
         ini_set('default_socket_timeout', 5); // this should be >= 5 sec, otherwise there will be broken pipe - tested
         $this->handler = $handler;
         $this->config = $config;
@@ -62,7 +60,7 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
      */
     public function run()
     {
-        $errno = NULL;
+        $errno = null;
         $errorMessage = '';
 
         $server = stream_socket_server("tcp://{$this->config['host']}:{$this->config['port']}", $errno, $errorMessage);
@@ -143,7 +141,7 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
      * @param resource $server
      * @param array $readSocks
      */
-    private function acceptNewClient($server, array &$readSocks) : void
+    private function acceptNewClient($server, array &$readSocks): void
     {
         $newClient = stream_socket_accept($server, 0); // must be 0 to non-block
         if ($newClient) {
@@ -165,12 +163,98 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
     }
 
     /**
+     * Parses parameters from GET on web-socket client connection before handshake
+     *
+     * @param string $headers
+     */
+    private function setPathParams(string $headers): void
+    {
+        if (empty($this->handler->pathParams) === false) {
+            $matches = [];
+            preg_match('/GET\s(.*?)\s/', $headers, $matches);
+            $left = $matches[1];
+            foreach ($this->handler->pathParams as $k => $param) {
+                if (empty($this->handler->pathParams[$k + 1]) && strpos($left, '/', 1) === false) {
+                    // do not eat last char if there is no / at the end
+                    $this->handler->pathParams[$param] = substr($left, strpos($left, '/') + 1);
+                } else {
+                    // eat both slashes
+                    $this->handler->pathParams[$param] = substr($left, strpos($left, '/') + 1, strpos($left, '/', 1) - 1);
+                }
+                // clear the declaration of parsed param
+                unset($this->handler->pathParams[array_search($param, $this->handler->pathParams, false)]);
+                $left = substr($left, strpos($left, '/', 1));
+            }
+        }
+    }
+
+    /**
+     * Handshakes/upgrade and key parse
+     *
+     * @param resource $client Source client socket to write
+     * @param string $headers Headers that client has been sent
+     * @return string   socket handshake key (Sec-WebSocket-Key)| false on parse error
+     */
+    private function handshake($client, string $headers): string
+    {
+        $match = [];
+        preg_match(self::SEC_WEBSOCKET_KEY_PTRN, $headers, $match);
+        if (empty($match[1])) {
+            return false;
+        }
+
+        $key = $match[1];
+        $this->handshakes[(int)$client] = $key;
+        // sending header according to WebSocket Protocol
+        $secWebSocketAccept = base64_encode(sha1(trim($key) . self::HEADER_WEBSOCKET_ACCEPT_HASH, true));
+        $this->setHeadersUpgrade($secWebSocketAccept);
+        $upgradeHeaders = $this->getHeadersUpgrade();
+
+        fwrite($client, $upgradeHeaders);
+        return $key;
+    }
+
+    /**
+     * Sets an array of headers needed to upgrade server/client connection
+     *
+     * @param string $secWebSocketAccept base64 encoded Sec-WebSocket-Accept header
+     */
+    private function setHeadersUpgrade($secWebSocketAccept): void
+    {
+        $this->headersUpgrade = [
+            self::HEADERS_UPGRADE_KEY => self::HEADERS_UPGRADE_VALUE,
+            self::HEADERS_CONNECTION_KEY => self::HEADERS_CONNECTION_VALUE,
+            self::HEADERS_SEC_WEBSOCKET_ACCEPT_KEY => ' ' . $secWebSocketAccept // the space before key is really important
+        ];
+    }
+
+    /**
+     * Retreives headers from an array of headers to upgrade server/client connection
+     *
+     * @return string   Headers to Upgrade communication connection
+     */
+    private function getHeadersUpgrade(): string
+    {
+        $handShakeHeaders = self::HEADER_HTTP1_1 . self::HEADERS_EOL;
+        if (empty($this->headersUpgrade)) {
+            die('Headers array is not set' . PHP_EOL);
+        }
+        foreach ($this->headersUpgrade as $key => $header) {
+            $handShakeHeaders .= $key . ':' . $header . self::HEADERS_EOL;
+            if ($key === self::HEADERS_SEC_WEBSOCKET_ACCEPT_KEY) { // add additional EOL fo Sec-WebSocket-Accept
+                $handShakeHeaders .= self::HEADERS_EOL;
+            }
+        }
+        return $handShakeHeaders;
+    }
+
+    /**
      * @uses onMessage
      * @uses onPing
      * @uses onPong
      * @param array $readSocks
      */
-    private function messagesWorker(array $readSocks) : void
+    private function messagesWorker(array $readSocks): void
     {
         foreach ($readSocks as $kSock => $sock) {
             $data = $this->decode(fread($sock, self::MAX_BYTES_READ));
@@ -210,7 +294,7 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
     private function decode(string $data)
     {
         if (empty($data)) {
-            return NULL; // close has been sent
+            return null; // close has been sent
         }
 
         $unmaskedPayload = '';
@@ -294,91 +378,5 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
         }
 
         return $decodedData;
-    }
-
-    /**
-     * Handshakes/upgrade and key parse
-     *
-     * @param resource $client Source client socket to write
-     * @param string $headers Headers that client has been sent
-     * @return string   socket handshake key (Sec-WebSocket-Key)| false on parse error
-     */
-    private function handshake($client, string $headers) : string
-    {
-        $match = [];
-        preg_match(self::SEC_WEBSOCKET_KEY_PTRN, $headers, $match);
-        if (empty($match[1])) {
-            return false;
-        }
-
-        $key = $match[1];
-        $this->handshakes[(int)$client] = $key;
-        // sending header according to WebSocket Protocol
-        $secWebSocketAccept = base64_encode(sha1(trim($key) . self::HEADER_WEBSOCKET_ACCEPT_HASH, true));
-        $this->setHeadersUpgrade($secWebSocketAccept);
-        $upgradeHeaders = $this->getHeadersUpgrade();
-
-        fwrite($client, $upgradeHeaders);
-        return $key;
-    }
-
-    /**
-     * Sets an array of headers needed to upgrade server/client connection
-     *
-     * @param string $secWebSocketAccept base64 encoded Sec-WebSocket-Accept header
-     */
-    private function setHeadersUpgrade($secWebSocketAccept) : void
-    {
-        $this->headersUpgrade = [
-            self::HEADERS_UPGRADE_KEY              => self::HEADERS_UPGRADE_VALUE,
-            self::HEADERS_CONNECTION_KEY           => self::HEADERS_CONNECTION_VALUE,
-            self::HEADERS_SEC_WEBSOCKET_ACCEPT_KEY => ' ' . $secWebSocketAccept // the space before key is really important
-        ];
-    }
-
-    /**
-     * Retreives headers from an array of headers to upgrade server/client connection
-     *
-     * @return string   Headers to Upgrade communication connection
-     */
-    private function getHeadersUpgrade() : string
-    {
-        $handShakeHeaders = self::HEADER_HTTP1_1 . self::HEADERS_EOL;
-        if (empty($this->headersUpgrade)) {
-            die('Headers array is not set' . PHP_EOL);
-        }
-        foreach ($this->headersUpgrade as $key => $header) {
-            $handShakeHeaders .= $key . ':' . $header . self::HEADERS_EOL;
-            if ($key === self::HEADERS_SEC_WEBSOCKET_ACCEPT_KEY) { // add additional EOL fo Sec-WebSocket-Accept
-                $handShakeHeaders .= self::HEADERS_EOL;
-            }
-        }
-        return $handShakeHeaders;
-    }
-
-    /**
-     * Parses parameters from GET on web-socket client connection before handshake
-     *
-     * @param string $headers
-     */
-    private function setPathParams(string $headers) : void
-    {
-        if (empty($this->handler->pathParams) === false) {
-            $matches = [];
-            preg_match('/GET\s(.*?)\s/', $headers, $matches);
-            $left = $matches[1];
-            foreach ($this->handler->pathParams as $k => $param) {
-                if (empty($this->handler->pathParams[$k + 1]) && strpos($left, '/', 1) === false) {
-                    // do not eat last char if there is no / at the end
-                    $this->handler->pathParams[$param] = substr($left, strpos($left, '/') + 1);
-                } else {
-                    // eat both slashes
-                    $this->handler->pathParams[$param] = substr($left, strpos($left, '/') + 1, strpos($left, '/', 1) - 1);
-                }
-                // clear the declaration of parsed param
-                unset($this->handler->pathParams[array_search($param, $this->handler->pathParams, false)]);
-                $left = substr($left, strpos($left, '/', 1));
-            }
-        }
     }
 }

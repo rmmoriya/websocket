@@ -22,7 +22,6 @@ class ServerHandler extends WebSocket
     public function onOpen(ConnectionContract $conn)
     {
         $this->clients[] = $conn;
-        echo"<pre>"; var_dump($this->pathParams);
         echo 'Connection opend, total clients: ' . count($this->clients) . PHP_EOL;
     }
 
