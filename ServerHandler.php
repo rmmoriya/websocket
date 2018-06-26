@@ -34,9 +34,10 @@ class ServerHandler extends WebSocket
         echo 'Received message:  ' . $msg . PHP_EOL;
         $recv->send(json_encode([
             "id" => "eb4e0ec3",
-            "event" => "open",
-            "room" => $this->pathParams[':token'],
-            "clients" => count($this->clients)
+            "content" => $msg
+//            "event" => "open",
+//            "room" => $this->pathParams[':token'],
+//            "clients" => count($this->clients)
         ]));
     }
 
