@@ -157,7 +157,7 @@
         stateLabel.innerHTML = "Connecting";
 
         if (room.value) {
-            socket = new WebSocket(connectionUrl.value + "/message/chat/" + room.value);
+            socket = new WebSocket(connectionUrl.value + "/messanger/chat/" + room.value);
             console.log("Connection with room;");
         }
         else {
