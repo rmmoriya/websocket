@@ -23,7 +23,7 @@ class ServerHandler extends WebSocket
         $conn->send(json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
-            "room" => $this->pathParams[':room'],
+            "room" => $this->pathParams[':token'],
             "clients" => count($this->clients)
         ]));
     }
