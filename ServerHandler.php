@@ -6,7 +6,7 @@ use WSSC\Exceptions\WebSocketException;
 
 class ServerHandler extends WebSocket
 {
-    public $pathParams = [':entity', ':context', ':token'];
+    public $pathParams = [];
     private $clients = [];
 
     public function onOpen(ConnectionContract $conn)
