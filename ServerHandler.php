@@ -14,15 +14,18 @@ class ServerHandler extends WebSocket
      *  Otherwise leave $pathParams as an empty array
      */
 
-    public $pathParams = [':entity', ':context', ':token'];
+    public $pathParams = [':entity', ':context', ':room'];
     private $clients = [];
 
     public function onOpen(ConnectionContract $conn)
     {
         $this->clients[] = $conn;
-        echo "<pre>";
-        var_dump($this->pathParams);
-        echo 'Connection opend, total clients: ' . count($this->clients) . PHP_EOL;
+        return json_encode([
+            "id" => "eb4e0ec3",
+            "event" => "open",
+            "room" => $this->pathParams[':room'],
+            "clients" => count($this->clients)
+        ]);
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
