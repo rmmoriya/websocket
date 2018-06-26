@@ -14,7 +14,7 @@ class ServerHandler extends WebSocket
      *  Otherwise leave $pathParams as an empty array
      */
 
-    public $pathParams = [':entity', ':context', ':token', ':room'];
+    public $pathParams = [':entity', ':context', ':token'];
     private $clients = [];
 
     public function onOpen(ConnectionContract $conn)
