@@ -11,7 +11,7 @@ class ServerHandler extends WebSocket
 
     public function onOpen(ConnectionContract $conn)
     {
-        $this->clients[] = $conn;
+        $this->clients[$this->pathParams[':token']][] = $conn;
         $conn->send(json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
@@ -22,9 +22,14 @@ class ServerHandler extends WebSocket
 
     public function onMessage(ConnectionContract $recv, $msg)
     {
-        foreach ($this->clients as $client) {
-            echo"<pre>"; var_dump($client); die();
+        /** @var ConnectionContract $client */
+        foreach ($this->clients[$this->pathParams[':token']] as $client) {
+            $client->send(json_encode([
+                "id" => "eb4e0ec3",
+                "content" => $msg
+            ]));
         }
+
         $recv->send(json_encode([
             "id" => "eb4e0ec3",
             "content" => $msg
