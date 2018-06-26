@@ -12,7 +12,7 @@ class ServerHandler extends WebSocket
     public function onOpen(ConnectionContract $conn)
     {
         $this->clients[] = $conn;
-        echo"<pre>"; var_dump($this->clients); die();
+        $conn->send('teste');
 //
 //        $conn->send(json_encode([
 //            "id" => "eb4e0ec3",
