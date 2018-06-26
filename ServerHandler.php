@@ -26,20 +26,18 @@ class ServerHandler extends WebSocket
 //            "room" => $this->pathParams[':token'],
 //            "clients" => count($this->clients)
 //        ]));
-        echo 'Teste:  '. PHP_EOL;
+        echo 'Teste:  ' . PHP_EOL;
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
     {
         echo 'Received message:  ' . $msg . PHP_EOL;
-//        $recv->send($msg);
-
-        echo json_encode([
+        $recv->send(json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
             "room" => $this->pathParams[':token'],
             "clients" => count($this->clients)
-        ]);
+        ]));
     }
 
     public function onClose(ConnectionContract $conn)
