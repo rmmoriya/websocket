@@ -6,24 +6,24 @@ use WSSC\Exceptions\WebSocketException;
 
 class ServerHandler extends WebSocket
 {
-    public $pathParams = [':entity', ':context', ':token'];
+    public $pathParams = [':entity', ':context', ':room'];
     private $clients = [];
 
     public function onOpen(ConnectionContract $conn)
     {
-        $this->clients[$this->pathParams[':token']][] = $conn;
+        $this->clients[$this->pathParams[':room']][] = $conn;
         $conn->send(json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
-            "room" => $this->pathParams[':token'],
-            "clients" => count($this->clients[$this->pathParams[':token']])
+            "room" => $this->pathParams[':room'],
+            "clients" => count($this->clients[$this->pathParams[':room']])
         ]));
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
     {
         /** @var ConnectionContract $client */
-        foreach ($this->clients[$this->pathParams[':token']] as $client) {
+        foreach ($this->clients[$this->pathParams[':room']] as $client) {
             $client->send(json_encode([
                 "id" => "eb4e0ec3",
                 "content" => $msg
