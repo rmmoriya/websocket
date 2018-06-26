@@ -20,12 +20,12 @@ class ServerHandler extends WebSocket
     public function onOpen(ConnectionContract $conn)
     {
         $this->clients[] = $conn;
-        $conn->send([
+        $conn->send(json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
             "room" => $this->pathParams[':room'],
             "clients" => count($this->clients)
-        ]);
+        ]));
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
