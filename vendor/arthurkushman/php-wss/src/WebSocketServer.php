@@ -155,8 +155,8 @@ class WebSocketServer implements WebSocketServerContract, CommonsContract
             $this->clients[] = $newClient;
             $this->stepRecursion = true; // set on new client coz of remainder % is always 0
             // trigger OPEN event
-            $this->handshake($newClient, $headers);
             $this->handler->onOpen($this->connImpl->getConnection($newClient));
+            $this->handshake($newClient, $headers);
         }
         //delete the server socket from the read sockets
         unset($readSocks[array_search($server, $readSocks, false)]);
