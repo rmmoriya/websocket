@@ -27,6 +27,7 @@ class ServerHandler extends WebSocket
 //            "clients" => count($this->clients)
 //        ]));
         echo 'Teste:  '. PHP_EOL;
+        $conn->send('teste');
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
