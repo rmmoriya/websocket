@@ -6,13 +6,11 @@ use WSSC\Exceptions\WebSocketException;
 
 class ServerHandler extends WebSocket
 {
-    public $pathParams = [];
+    public $pathParams = [':entity', ':context', ':token'];
     private $clients = [];
 
     public function onOpen(ConnectionContract $conn)
     {
-        echo"<pre>"; var_dump($_GET);
-        echo"<pre>"; var_dump($this->pathParams);
         $this->clients[$this->pathParams[':token']][] = $conn;
         $conn->send(json_encode([
             "id" => "eb4e0ec3",
