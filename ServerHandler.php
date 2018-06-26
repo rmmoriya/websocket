@@ -22,6 +22,9 @@ class ServerHandler extends WebSocket
 
     public function onMessage(ConnectionContract $recv, $msg)
     {
+        foreach ($this->clients as $client) {
+            echo"<pre>"; var_dump($client); die();
+        }
         $recv->send(json_encode([
             "id" => "eb4e0ec3",
             "content" => $msg
