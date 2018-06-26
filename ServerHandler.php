@@ -20,6 +20,12 @@ class ServerHandler extends WebSocket
     public function onOpen(ConnectionContract $conn)
     {
         $this->clients[] = $conn;
+        $conn->send([
+            "id" => "eb4e0ec3",
+            "event" => "open",
+            "room" => $this->pathParams[':room'],
+            "clients" => count($this->clients)
+        ]);
     }
 
     public function onMessage(ConnectionContract $recv, $msg)
@@ -27,7 +33,9 @@ class ServerHandler extends WebSocket
         echo 'Received message:  ' . $msg . PHP_EOL;
 //        $recv->send($msg);
 
-        echo"<pre>"; var_dump($this->pathParams); die();
+        echo "<pre>";
+        var_dump($this->pathParams);
+        die();
         echo json_encode([
             "id" => "eb4e0ec3",
             "event" => "open",
