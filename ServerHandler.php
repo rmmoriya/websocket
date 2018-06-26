@@ -29,11 +29,6 @@ class ServerHandler extends WebSocket
                 "content" => $msg
             ]));
         }
-
-        $recv->send(json_encode([
-            "id" => "eb4e0ec3",
-            "content" => $msg
-        ]));
     }
 
     public function onClose(ConnectionContract $conn)
